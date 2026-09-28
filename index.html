@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>seqalign 比对轨道台</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:0;background:#0d1117;color:#e6edf3}
+.wrap{display:grid;grid-template-columns:minmax(520px,1fr) 320px;gap:16px;padding:18px;align-items:start}
+.card{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:14px}
+h2{font-size:13px;color:#8b949e;margin:0 0 10px}
+#track{display:grid;gap:2px;align-items:center;overflow-x:auto;padding-bottom:6px}
+.cell{width:26px;height:26px;line-height:26px;text-align:center;border-radius:6px;
+      font-family:ui-monospace,monospace;font-size:14px;background:#21262d;color:#e6edf3}
+.cell.gap{background:#0d1117;color:#8b949e;border:1px dashed #30363d}
+.cell.dim{opacity:.55}
+.bridge{width:26px;height:14px;border-radius:4px;background:#30363d}
+.bridge.eq{background:#2ea043}
+.bridge.x{background:#d29922}
+.bridge.g{background:#8957e5}
+.labels{display:grid;gap:2px;font-size:11px;color:#8b949e;text-align:center}
+#rail{display:grid;gap:2px;margin-top:10px;font-size:11px;color:#8b949e;text-align:center;align-items:end}
+#rail span{display:block}
+pre{background:#0d1117;color:#79c0ff;padding:10px;border-radius:8px;overflow:auto;font-size:12px;margin-top:12px}
+button{font:inherit;padding:4px 10px;margin:0 6px 6px 0;border:1px solid #30363d;border-radius:8px;
+       background:#21262d;color:#e6edf3;cursor:pointer}
+button.main{background:#238636;border-color:#2ea043}
+.chip{display:inline-block;font-size:12px;padding:2px 9px;border-radius:999px;background:#21262d;color:#79c0ff;margin:0 6px 6px 0}
+.chip.bad{background:#3d1418;color:#ff7b72}
+</style></head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h2>双行字母轨道与列桥条</h2>
+    <div id="track"></div>
+    <div id="rail"></div>
+    <div id="chips" style="margin-top:12px"></div>
+    <pre id="out">还没跑</pre>
+  </div>
+  <div class="card">
+    <h2>操作</h2>
+    <div style="margin-bottom:6px">给 a 接字符</div>
+    <div id="forA"></div>
+    <div style="margin:8px 0 6px">给 b 接字符</div>
+    <div id="forB"></div>
+    <div style="margin-top:8px"><button id="doAlign" class="main">比对</button></div>
+    <div id="log" style="font-size:12px;color:#8b949e;margin-top:8px">点字母或比对按钮开始。</div>
+  </div>
+</div>
+<div id="scene" hidden>{
+  "state": {
+    "a": "",
+    "b": "",
+    "grid": { "M": [[0]], "X": [[-1000]], "Y": [[-1000]] },
+    "filled": [0, 0],
+    "columns": [],
+    "cigar": "",
+    "score": 0,
+    "best": [0, 0, "M"],
+    "matches": 0,
+    "mismatches": 0,
+    "gaps": 0,
+    "gap_runs": 0,
+    "permille": 0,
+    "aligns": 0,
+    "loads": 0,
+    "appends": 0,
+    "cells": 0,
+    "last_cells": 0
+  },
+  "events": [
+    { "kind": "load", "a": "ACGTTAC", "b": "ACGTAC" },
+    { "kind": "align" },
+    { "kind": "append", "side": "a", "ch": "C" },
+    { "kind": "align" },
+    { "kind": "align" },
+    { "kind": "append", "side": "b", "ch": "A" },
+    { "kind": "align" },
+    { "kind": "append", "side": "a", "ch": "N" },
+    { "kind": "align" }
+  ]
+}</div>
+<script type="module">
+import { render } from "./app.js";
+
+const spec = JSON.parse(document.getElementById("scene").textContent);
+const track = document.getElementById("track");
+const rail = document.getElementById("rail");
+const chips = document.getElementById("chips");
+
+function tile(letter, gap) {
+  const div = document.createElement("div");
+  div.className = gap ? "cell gap" : "cell";
+  div.textContent = gap ? "." : letter;
+  div.style.gridRow = "1";
+  return div;
+}
+
+function draw() {
+  const view = render(spec);
+  document.getElementById("out").textContent = JSON.stringify(
+    { score: view.score, best: view.best, cigar: view.cigar, a_row: view.a_row,
+      b_row: view.b_row, matches: view.matches, mismatches: view.mismatches,
+      gaps: view.gaps, gap_runs: view.gap_runs, permille: view.permille,
+      aligns: view.aligns, loads: view.loads, appends: view.appends,
+      cells: view.cells, last_cells: view.last_cells, failed: view.failed }, null, 1);
+  track.textContent = "";
+  rail.textContent = "";
+  const count = view.columns.length;
+  track.style.gridTemplateColumns = "repeat(" + Math.max(count, 1) + ", 28px)";
+  rail.style.gridTemplateColumns = "repeat(" + Math.max(count, 1) + ", 28px)";
+  for (let at = 0; at < count; at += 1) {
+    const pair = view.columns[at];
+    const top = tile(pair[0], pair[0] === "-");
+    const bridge = document.createElement("div");
+    const kind = view.kinds[at];
+    bridge.className = "bridge " + (kind === "=" ? "eq" : kind === "X" ? "x" : "g");
+    bridge.style.gridRow = "2";
+    const bottom = tile(pair[1], pair[1] === "-");
+    bottom.style.gridRow = "3";
+    top.style.gridColumn = String(at + 1);
+    bridge.style.gridColumn = String(at + 1);
+    bottom.style.gridColumn = String(at + 1);
+    track.appendChild(top);
+    track.appendChild(bridge);
+    track.appendChild(bottom);
+    const mark = document.createElement("span");
+    mark.textContent = kind;
+    rail.appendChild(mark);
+  }
+  chips.textContent = "";
+  const chip = function (label, bad) {
+    const span = document.createElement("span");
+    span.className = bad ? "chip bad" : "chip";
+    span.textContent = label;
+    chips.appendChild(span);
+  };
+  chip("得分 " + view.score);
+  chip("最优格 " + view.best.join("/"));
+  chip("CIGAR " + view.cigar);
+  chip("间隙段 " + view.gap_runs);
+  chip("比对 " + view.aligns + " 次");
+  chip("累计填格 " + view.cells);
+  chip("本次填格 " + view.last_cells, view.last_cells !== 0);
+  chip("失败事件 " + view.failed, view.failed > 0);
+}
+
+function buildButtons() {
+  const letters = ["A", "C", "G", "T"];
+  for (const side of ["a", "b"]) {
+    const host = document.getElementById(side === "a" ? "forA" : "forB");
+    for (const letter of letters) {
+      const button = document.createElement("button");
+      button.textContent = letter;
+      button.addEventListener("click", function () {
+        spec.events.push({ kind: "append", side: side, ch: letter });
+        draw();
+      });
+      host.appendChild(button);
+    }
+  }
+}
+
+document.getElementById("doAlign").addEventListener("click", function () {
+  spec.events.push({ kind: "align" });
+  draw();
+});
+buildButtons();
+draw();
+</script>
+</body>
+</html>

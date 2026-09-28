@@ -1,0 +1,33 @@
+{
+  "state": {
+    "a": "",
+    "b": "",
+    "grid": { "M": [[0]], "X": [[-1000]], "Y": [[-1000]] },
+    "filled": [0, 0],
+    "columns": [],
+    "cigar": "",
+    "score": 0,
+    "best": [0, 0, "M"],
+    "matches": 0,
+    "mismatches": 0,
+    "gaps": 0,
+    "gap_runs": 0,
+    "permille": 0,
+    "aligns": 0,
+    "loads": 0,
+    "appends": 0,
+    "cells": 0,
+    "last_cells": 0
+  },
+  "events": [
+    { "kind": "load", "a": "ACGTTAC", "b": "ACGTAC" },
+    { "kind": "align" },
+    { "kind": "append", "side": "a", "ch": "C" },
+    { "kind": "align" },
+    { "kind": "align" },
+    { "kind": "append", "side": "b", "ch": "A" },
+    { "kind": "align" },
+    { "kind": "append", "side": "a", "ch": "N" },
+    { "kind": "align" }
+  ]
+}
